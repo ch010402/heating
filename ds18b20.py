@@ -1,3 +1,5 @@
+FILE OBSOLETE
+
 #!/usr/bin/python3
 #created by Christoph Latzer on 2017-02-05
 #
