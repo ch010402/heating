@@ -5,13 +5,35 @@
 #
 #Intended function: write lists/arrays to the MYSQL Database
 #
-#modified by on
+#modified by on 
+#CL 2017-05-15 integrated reading of config file in this file
 
 import logging
 logging.info('Enter subrutine writeToMYSQ.py')
 
 from mysql.connector import MySQLConnection, Error, errorcode
-from python_mysql_dbconfig import read_db_config
+from configparser import ConfigParser
+
+def read_db_config(filename='mysql.conf.ini', section='mysql'):
+    """ Read database configuration file and return a dictionary object
+    :param filename: name of the configuration file
+    :param section: section of database configuration
+    :return: a dictionary of database parameters
+    """
+    # create parser and read ini configuration file
+    parser = ConfigParser()
+    parser.read(filename)
+ 
+    # get section, default to mysql
+    db = {}
+    if parser.has_section(section):
+        items = parser.items(section)
+        for item in items:
+            db[item[0]] = item[1]
+    else:
+        raise Exception('{0} not found in the {1} file'.format(section, filename))
+ 
+    return db
 
 def connect():           
     try:
@@ -54,7 +76,6 @@ def checkTableExists(Sensor):
 	finally:
 		conn.close()
 
-
 def insertOneData(Sensor):
 	try:
 		if checkTableExists(Sensor):
@@ -73,8 +94,7 @@ def insertOneData(Sensor):
 
 	finally:
 		conn.close()
- 
- 
+
 def insertAllData(Sensors):
 	try:
 		for Sensor in Sensors:
@@ -92,5 +112,33 @@ def insertAllData(Sensors):
 	except Error as err:
 		logging.error("writeToMYSQ.py-insertOneData: something's wrong" + err)
 
+	finally:
+		conn.close()
+		
+def addSensorDates(Sensors):
+	try:
+		dbconfig = read_db_config()
+		conn = MySQLConnection(**dbconfig)
+		cursor = conn.cursor()
+		cursor.execute("CREATE TABLE `tempo`.`sensors` ( "
+						"`name` VARCHAR NOT NULL , "
+						"`address` VARCHAR NOT NULL , "
+						"`id` VARCHAR NOT NULL , "
+						"`offset` FLOAT NOT NULL , "
+						"`correction` FLOAT NOT NULL , "
+						"`enabled` BOOLEAN NOT NULL , "
+						"PRIMARY KEY (`address`)) ENGINE = MyISAM;")
+						
+	except Error as err:
+		if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
+			logging.info("Table `sensors` already exists.")
+			for s in Sensors:
+				cursor.execute("INSERT INTO `tempo`.`sensors` ( "
+								"`name`, `address`, `id`, `offset`, `correction`, `enabled`)"
+								"VALUES ('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');"
+								.format(s.name, s.dir, s.id, s.off, s.cor, s.stat))
+		else:
+			logging.error("writeToMYSQ.py-addSensorDate: something's wrong" + err)
+			
 	finally:
 		conn.close()
