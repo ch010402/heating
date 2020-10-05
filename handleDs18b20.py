@@ -25,7 +25,7 @@ logging.info('load driver w1-therm by modprobe')
 
 # define sensor directory
 base_dir = '/sys/bus/w1/devices/'
-device_file = '/w1_subordinate'
+device_file = '/w1_subordinate' # if not yet migrated use /w1_slave
 logging.debug('define sensor directory')
 
 # create class Sensor
